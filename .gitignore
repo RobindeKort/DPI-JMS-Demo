@@ -1,3 +1,7 @@
-/target/
-/nbproject/
+TweakersClient/target/
+TweakersClient/nbproject/
+TweakersBroker/target/
+TweakersBroker/nbproject/
+StoreClient/target/
+StoreClient/nbproject/
 *.zip

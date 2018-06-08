@@ -1,4 +1,4 @@
-package main;
+package fontys.storeclient;
 
 import java.net.URL;
 import java.util.ResourceBundle;

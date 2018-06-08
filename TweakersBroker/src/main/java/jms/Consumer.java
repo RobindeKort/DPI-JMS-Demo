@@ -1,16 +1,18 @@
 package jms;
 
-import java.util.Enumeration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.jms.Connection;
-import javax.jms.Destination;
+import javax.jms.DeliveryMode;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
+import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
-import javax.jms.Topic;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.RedeliveryPolicy;
 
 /**
  *
@@ -18,116 +20,76 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  */
 public class Consumer implements MessageListener {
 
+    private final String ACTION_ID_HEADER = "actionId";
+    private final String ACTION_HEADER = "action";
+    
+    private Long id;
+
     private String activeMqBrokerUri;
     private String username;
     private String password;
-
-    private boolean isDestinationTopic;
-    private String destinationName;
-    private String selector;
-    private String clientId;
+    
+    private Connection connection;
+    private Session session;
+    private MessageProducer producer;
+    private MessageConsumer consumer;
 
     public Consumer(String activeMqBrokerUri, String username, String password) {
         super();
+        this.id = 1L;
         this.activeMqBrokerUri = activeMqBrokerUri;
         this.username = username;
         this.password = password;
     }
 
-    public void run() throws JMSException {
+    public void start(String originQueue, String destinationTopic) throws JMSException {
         ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(username, password, activeMqBrokerUri);
-        if (clientId != null) {
-            factory.setClientID(clientId);
-        }
-        Connection connection = factory.createConnection();
-        if (clientId != null) {
-            connection.setClientID(clientId);
-        }
-        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-
-        setComsumer(session);
-
+        factory.setUseAsyncSend(true);
+        RedeliveryPolicy policy = factory.getRedeliveryPolicy();
+        policy.setInitialRedeliveryDelay(500);
+        policy.setBackOffMultiplier(2);
+        policy.setUseExponentialBackOff(true);
+        policy.setMaximumRedeliveries(2);
+        
+        connection = factory.createConnection();
         connection.start();
-        System.out.println(Thread.currentThread().getName() + ": ActiveMQMessageConsumer Waiting for messages at "
-                + destinationName);
+        session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+        producer = session.createProducer(session.createTopic(destinationTopic));
+        consumer = session.createConsumer(session.createQueue(originQueue));
+        consumer.setMessageListener(this);
     }
 
-    private void setComsumer(Session session) throws JMSException {
-        MessageConsumer consumer = null;
-        if (isDestinationTopic) {
-            Topic topic = session.createTopic(destinationName);
-
-            if (selector == null) {
-                consumer = session.createConsumer(topic);
-            } else {
-                consumer = session.createConsumer(topic, selector);
-            }
-        } else {
-            Destination destination = session.createQueue(destinationName);
-
-            if (selector == null) {
-                consumer = session.createConsumer(destination);
-            } else {
-                consumer = session.createConsumer(destination, selector);
-            }
+    public void stop() throws JMSException {
+        if (consumer != null) {
+            consumer.close();
+            consumer = null;
         }
-        consumer.setMessageListener(this);
+        
+        if (producer != null) {
+            producer.close();
+            producer = null;
+        }
+
+        if (session != null) {
+            session.close();
+            session = null;
+        }
+        if (connection != null) {
+            connection.close();
+            connection = null;
+        }
     }
 
     @Override
     public void onMessage(Message message) {
-        String msg;
+        TextMessage textMessage = (TextMessage) message;
         try {
-            msg = String.format(
-                    "[%s]: ActiveMQMessageConsumer Received message from [ %s] - Headers: [ %s] Message: [ %s ]",
-                    Thread.currentThread().getName(), destinationName, getPropertyNames(message),
-                    ((TextMessage) message).getText());
-            System.out.println(msg);
-        } catch (JMSException e) {
-            e.printStackTrace();
+            System.out.println(textMessage.getJMSMessageID());
+            System.out.println(textMessage.getText());
+            // TODO robkor: Is this the correct usage of DeliveryMode, Priority and TimeToLive?
+            this.producer.send(textMessage, DeliveryMode.NON_PERSISTENT, 1, 0);
+        } catch (JMSException ex) {
+            Logger.getLogger(Consumer.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }
-
-    private String getPropertyNames(Message message) throws JMSException {
-        String props = "";
-        @SuppressWarnings("unchecked")
-        Enumeration properties = message.getPropertyNames();
-        while (properties.hasMoreElements()) {
-            String propKey = properties.nextElement().toString();
-            props += propKey + "=" + message.getStringProperty(propKey) + " ";
-        }
-        return props;
-    }
-
-    public void setSelector(String selector) {
-        this.selector = selector;
-    }
-
-    public boolean isDestinationTopic() {
-        return isDestinationTopic;
-    }
-
-    public String getDestinationName() {
-        return destinationName;
-    }
-
-    public String getSelector() {
-        return selector;
-    }
-
-    public String getClientId() {
-        return clientId;
-    }
-
-    public void setDestinationTopic(boolean isDestinationTopic) {
-        this.isDestinationTopic = isDestinationTopic;
-    }
-
-    public void setDestinationName(String destinationName) {
-        this.destinationName = destinationName;
-    }
-
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
     }
 }

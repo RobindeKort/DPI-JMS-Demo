@@ -18,16 +18,15 @@ public class Producer {
 
     protected long id;
 
-    private ConnectionFactory connFactory;
+    private String activeMqBrokerUri;
+    private String username;
+    private String password;
+
     private Connection connection;
     private Session session;
     private Destination destination;
     // https://docs.oracle.com/javaee/7/api/javax/jms/MessageProducer.html
-    private MessageProducer msgProducer;
-
-    private String activeMqBrokerUri;
-    private String username;
-    private String password;
+    private MessageProducer producer;
 
     public Producer(final String activeMqBrokerUri, final String username, final String password) {
         super();        
@@ -37,19 +36,25 @@ public class Producer {
         this.password = password;
     }
 
-    public void setup(final String destinationName)
-            throws JMSException {
-        setConnectionFactory(activeMqBrokerUri, username, password);
-        setConnection();
-        setSession(false);
-        setDestination(false, destinationName);
-        setMsgProducer();
+    public void setup(final String destinationQueue) throws JMSException {
+        ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(username, password, activeMqBrokerUri);
+        factory.setUseAsyncSend(true);
+        RedeliveryPolicy policy = factory.getRedeliveryPolicy();
+        policy.setInitialRedeliveryDelay(500);
+        policy.setBackOffMultiplier(2);
+        policy.setUseExponentialBackOff(true);
+        policy.setMaximumRedeliveries(2);
+        
+        connection = factory.createConnection();
+        connection.start();
+        session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+        producer = session.createProducer(session.createTopic(destinationQueue));
     }
 
     public void close() throws JMSException {
-        if (msgProducer != null) {
-            msgProducer.close();
-            msgProducer = null;
+        if (producer != null) {
+            producer.close();
+            producer = null;
         }
 
         if (session != null) {
@@ -72,41 +77,7 @@ public class Producer {
         TextMessage textMessage = session.createTextMessage(actionVal);
         textMessage.setStringProperty(ACTION_HEADER, actionVal);
         textMessage.setStringProperty(ACTION_ID_HEADER, String.valueOf(id));
-        msgProducer.send(destination, textMessage);
+        producer.send(destination, textMessage);
         this.id++;
-    }
-
-    private void setDestination(final boolean isDestinationTopic, final String destinationName) throws JMSException {
-        if (isDestinationTopic) {
-            destination = session.createTopic(destinationName);
-        } else {
-            destination = session.createQueue(destinationName);
-        }
-    }
-
-    private void setMsgProducer() throws JMSException {
-        msgProducer = session.createProducer(destination);
-    }
-
-    private void setSession(final boolean transacted) throws JMSException {
-        // transacted=true for better performance to push message in batch mode
-        session = connection.createSession(transacted, Session.AUTO_ACKNOWLEDGE);
-    }
-
-    private void setConnection() throws JMSException {
-        connection = connFactory.createConnection();
-        connection.start();
-    }
-
-    private void setConnectionFactory(final String activeMqBrokerUri, final String username, final String password) {
-        connFactory = new ActiveMQConnectionFactory(username, password, activeMqBrokerUri);
-
-        ((ActiveMQConnectionFactory) connFactory).setUseAsyncSend(true);
-
-        RedeliveryPolicy policy = ((ActiveMQConnectionFactory) connFactory).getRedeliveryPolicy();
-        policy.setInitialRedeliveryDelay(500);
-        policy.setBackOffMultiplier(2);
-        policy.setUseExponentialBackOff(true);
-        policy.setMaximumRedeliveries(2);
     }
 }

@@ -2,6 +2,7 @@ package main;
 
 import java.util.Scanner;
 import javax.jms.JMSException;
+import jms.Consumer;
 import jms.Producer;
 import service.BrokerController;
 
@@ -11,17 +12,13 @@ import service.BrokerController;
  */
 public class Main {
 
-    private static String activeMQIp = "127.0.0.1";
+    private static final String activeMqIp = "127.0.0.1";
 
     private static BrokerController broker;
 
     public static void main(String[] args) throws JMSException {
-        System.out.println("Connecting to ActiveMQ server. . .");
-        Producer msgQueueSender = new Producer("tcp://" + activeMQIp + ":61616", "admin", "secret");
-        msgQueueSender.setup("TrafficQueue");
-
         System.out.println("\nBroker is starting. . .\n");
-        broker = new BrokerController(msgQueueSender);
+        broker = new BrokerController(activeMqIp);
 
         showMainMenu();
         Scanner sc = new Scanner(System.in);

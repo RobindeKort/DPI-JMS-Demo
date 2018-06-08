@@ -38,9 +38,9 @@ public class FXMLController implements Initializable {
         int desiredPrice = spinnerPrice.getValue();
         MessageProduct msg = new MessageProduct(desiredPrice, selectedProduct);
         try {
-            msgQueueSender.sendMessage(gson.toJson(msg));
+            producer.sendMessage(gson.toJson(msg));
             labelResponse.setText("Awaiting reponse from server...");
-            buttonRequest.setDisable(true);
+            //buttonRequest.setDisable(true);
         } catch (JMSException ex) {
             Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -54,15 +54,15 @@ public class FXMLController implements Initializable {
 
     private final Gson gson = new Gson();
     private final String activeMqIp = "127.0.0.1";
-    private Producer msgQueueSender;
+    private Producer producer;
     private List<Product> products;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         System.out.println("Connecting to ActiveMQ server. . .");
         try {
-            msgQueueSender = new Producer("tcp://" + activeMqIp + ":61616", "admin", "secret");
-            msgQueueSender.setup("RequestQueue");
+            producer = new Producer("tcp://" + activeMqIp + ":61616", "admin", "admin");
+            producer.setup("RequestQueue");
         } catch (JMSException ex) {
             Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
             Platform.exit();
@@ -74,7 +74,7 @@ public class FXMLController implements Initializable {
     
     public void stop() {
         try {
-            msgQueueSender.close();
+            producer.close();
         } catch (JMSException ex) {
             Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
         }

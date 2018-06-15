@@ -1,7 +1,7 @@
 package jms;
 
 import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
+import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.MessageProducer;
@@ -11,6 +11,11 @@ import javax.jms.TextMessage;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.RedeliveryPolicy;
 
+/**
+ *
+ * @author Robin Good explanation of Queues, Topics and Virtual Topics in
+ * ActiveMQ: https://tuhrig.de/queues-vs-topics-vs-virtual-topics-in-activemq/
+ */
 public class Producer {
 
     private static final String ACTION_ID_HEADER = "actionId";
@@ -29,14 +34,14 @@ public class Producer {
     private MessageProducer producer;
 
     public Producer(final String activeMqBrokerUri, final String username, final String password) {
-        super();        
+        super();
         id = 1L;
         this.activeMqBrokerUri = activeMqBrokerUri;
         this.username = username;
         this.password = password;
     }
 
-    public void setup(final String destinationQueue) throws JMSException {
+    public void setup(final String originQueue, final String destinationQueue) throws JMSException {
         ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(username, password, activeMqBrokerUri);
         factory.setUseAsyncSend(true);
         RedeliveryPolicy policy = factory.getRedeliveryPolicy();
@@ -44,11 +49,11 @@ public class Producer {
         policy.setBackOffMultiplier(2);
         policy.setUseExponentialBackOff(true);
         policy.setMaximumRedeliveries(2);
-        
+
         connection = factory.createConnection();
         connection.start();
         session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-        producer = session.createProducer(session.createTopic(destinationQueue));
+        producer = session.createProducer(session.createQueue(destinationQueue));
     }
 
     public void close() throws JMSException {
@@ -77,7 +82,8 @@ public class Producer {
         TextMessage textMessage = session.createTextMessage(actionVal);
         textMessage.setStringProperty(ACTION_HEADER, actionVal);
         textMessage.setStringProperty(ACTION_ID_HEADER, String.valueOf(id));
-        producer.send(destination, textMessage);
+        // TODO robkor: Is this the correct usage of DeliveryMode, Priority and TimeToLive?
+        producer.send(textMessage, DeliveryMode.NON_PERSISTENT, 1, 0);
         this.id++;
     }
 }

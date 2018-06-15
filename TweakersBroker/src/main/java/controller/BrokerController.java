@@ -1,4 +1,4 @@
-package service;
+package controller;
 
 import javax.jms.JMSException;
 import jms.Consumer;
@@ -14,7 +14,10 @@ public class BrokerController {
     public BrokerController(String activeMqIp) throws JMSException {
         System.out.println("Connecting to ActiveMQ server. . .");
         this.consumer = new Consumer("tcp://" + activeMqIp + ":61616", "admin", "admin");
-        consumer.start("RequestQueue", "RequestTopic");
+        // The usage of a Virtual Topic requires a specific naming convention
+        // https://tuhrig.de/virtual-topics-in-activemq/
+        consumer.start("RequestBrokerQueue", "VirtualTopic.RequestStoreTopic");
+        System.out.println("Connected to ActiveMQ server.");
     }
     
     public void stop() throws JMSException {

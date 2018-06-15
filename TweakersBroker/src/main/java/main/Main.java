@@ -2,9 +2,7 @@ package main;
 
 import java.util.Scanner;
 import javax.jms.JMSException;
-import jms.Consumer;
-import jms.Producer;
-import service.BrokerController;
+import controller.BrokerController;
 
 /**
  *

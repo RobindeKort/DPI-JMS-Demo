@@ -2,6 +2,8 @@ package jms;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
 import javax.jms.JMSException;
@@ -33,6 +35,12 @@ public class Consumer implements MessageListener {
     private Session session;
     private MessageProducer producer;
     private MessageConsumer consumer;
+    
+    private ObservableList<TextMessage> receivedMessages;
+    
+    public ObservableList<TextMessage> getReceivedMessages() {
+        return receivedMessages;
+    }
 
     public Consumer(String activeMqBrokerUri, String username, String password) {
         super();
@@ -42,7 +50,7 @@ public class Consumer implements MessageListener {
         this.password = password;
     }
 
-    public void start(String originQueue, String destinationTopic) throws JMSException {
+    public void start(String originQueue, String destinationQueue) throws JMSException {
         ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(username, password, activeMqBrokerUri);
         factory.setUseAsyncSend(true);
         RedeliveryPolicy policy = factory.getRedeliveryPolicy();
@@ -54,8 +62,9 @@ public class Consumer implements MessageListener {
         connection = factory.createConnection();
         connection.start();
         session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-        producer = session.createProducer(session.createTopic(destinationTopic));
+        producer = session.createProducer(session.createQueue(destinationQueue));
         consumer = session.createConsumer(session.createQueue(originQueue));
+        receivedMessages = FXCollections.observableArrayList();
         consumer.setMessageListener(this);
     }
 
@@ -84,8 +93,9 @@ public class Consumer implements MessageListener {
     public void onMessage(Message message) {
         TextMessage textMessage = (TextMessage) message;
         try {
-            System.out.println(textMessage.getJMSMessageID());
             System.out.println(textMessage.getText());
+            // TODO robkor: Figure out how to get this ObservableList to work with the GUI
+            receivedMessages.add(textMessage);
             // TODO robkor: Is this the correct usage of DeliveryMode, Priority and TimeToLive?
             producer.send(textMessage, DeliveryMode.NON_PERSISTENT, 1, 0);
         } catch (JMSException ex) {

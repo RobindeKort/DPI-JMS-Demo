@@ -10,9 +10,9 @@ public class Laptop extends Product {
     private String keyboardLayout;
     private boolean touchScreen;
     
-    public Laptop(Long id, String name, String brand, 
+    public Laptop(Long id, String name, int price, String brand, 
             String keyboardLayout, boolean touchScreen) {
-        super(id, name);
+        super(id, name, price);
         this.brand = brand;
         this.keyboardLayout = keyboardLayout;
         this.touchScreen = touchScreen;

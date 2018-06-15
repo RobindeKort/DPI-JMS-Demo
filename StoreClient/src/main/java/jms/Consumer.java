@@ -2,6 +2,7 @@ package jms;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javax.jms.Connection;
@@ -22,10 +23,8 @@ import org.apache.activemq.RedeliveryPolicy;
  */
 public class Consumer implements MessageListener {
 
-    private final String ACTION_ID_HEADER = "actionId";
-    private final String ACTION_HEADER = "action";
-    
-    private Long id;
+    public static final String ACTION_ID_HEADER = "actionId";
+    public static final String ACTION_HEADER = "action";
 
     private String activeMqBrokerUri;
     private String username;
@@ -44,7 +43,6 @@ public class Consumer implements MessageListener {
 
     public Consumer(String activeMqBrokerUri, String username, String password) {
         super();
-        this.id = 1L;
         this.activeMqBrokerUri = activeMqBrokerUri;
         this.username = username;
         this.password = password;
@@ -88,16 +86,33 @@ public class Consumer implements MessageListener {
             connection = null;
         }
     }
+    
+    public void sendMessage(String correlationId, String id, final String actionVal) throws JMSException {
+        TextMessage textMessage = session.createTextMessage(actionVal);
+        textMessage.setJMSCorrelationID(correlationId);
+        textMessage.setStringProperty(ACTION_HEADER, actionVal);
+        textMessage.setStringProperty(ACTION_ID_HEADER, id);
+        // TODO robkor: Is this the correct usage of DeliveryMode, Priority and TimeToLive?
+        producer.send(textMessage, DeliveryMode.NON_PERSISTENT, 1, 0);
+    }
 
     @Override
     public void onMessage(Message message) {
-        TextMessage textMessage = (TextMessage) message;
+        final TextMessage textMessage = (TextMessage) message;
         try {
+            // final String messageContent = textMessage.getText();
+            System.out.println(textMessage.getJMSCorrelationID());
             System.out.println(textMessage.getText());
-            // TODO robkor: Figure out how to get this ObservableList to work with the GUI
-            receivedMessages.add(textMessage);
+            
+            Platform.runLater(new Runnable() {
+                @Override
+                public void run() {
+                    receivedMessages.add(textMessage);
+                }
+            });
+            
             // TODO robkor: Is this the correct usage of DeliveryMode, Priority and TimeToLive?
-            producer.send(textMessage, DeliveryMode.NON_PERSISTENT, 1, 0);
+            // producer.send(textMessage, DeliveryMode.NON_PERSISTENT, 1, 0);
         } catch (JMSException ex) {
             Logger.getLogger(Consumer.class.getName()).log(Level.SEVERE, null, ex);
         }

@@ -1,15 +1,12 @@
 package main;
 
-import jms.MessageProduct;
-import com.google.gson.Gson;
 import controller.TweakersController;
 import java.net.URL;
-import java.util.List;
-import java.util.ArrayList;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.application.Platform;
+import javafx.collections.ListChangeListener;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -19,7 +16,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javax.jms.JMSException;
-import jms.Producer;
+import jms.MessageResponseProduct;
 import model.*;
 
 public class FXMLController implements Initializable {
@@ -48,12 +45,12 @@ public class FXMLController implements Initializable {
 
     @FXML
     private ListView<Product> listviewProducts;
-    
+
     @FXML
     private Label labelResponse;
 
     private final String activeMqIp = "127.0.0.1";
-    
+
     private static TweakersController tweakersController;
 
     @Override
@@ -65,9 +62,29 @@ public class FXMLController implements Initializable {
             Platform.exit();
         }
         listviewProducts.getItems().addAll(tweakersController.getProducts());
+        tweakersController.getReceivedMessages().addListener(new ListChangeListener<MessageResponseProduct>() {
+            @Override
+            public void onChanged(ListChangeListener.Change<? extends MessageResponseProduct> c) {
+                c.next();
+                if (c.wasAdded()) {
+                    final MessageResponseProduct msg = c.getAddedSubList().get(0);
+                    if (msg == null) {
+                        System.out.println("test");
+                        return;
+                    }
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            labelResponse.setText(String.format("%1$s is offering you a %2$s for your desired price of %3$s.",
+                                    msg.getStoreName(), tweakersController.getProduct(msg.getProductId()), msg.getOfferedPrice()));
+                        }
+                    });
+                }
+            }
+        });
         spinnerPrice.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 10000, 0, 10));
     }
-    
+
     public void stop() {
         try {
             tweakersController.stop();

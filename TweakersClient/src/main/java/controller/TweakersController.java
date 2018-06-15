@@ -6,11 +6,11 @@ import dal.ProductDaoMem;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javafx.collections.ObservableList;
 import javax.jms.JMSException;
-import jms.MessageProduct;
-import jms.Producer;
+import jms.Consumer;
+import jms.MessageRequestProduct;
+import jms.MessageResponseProduct;
 import model.Laptop;
 import model.Monitor;
 import model.Product;
@@ -22,18 +22,26 @@ import model.Smartphone;
  */
 public class TweakersController {
 
-    private Producer producer;
+    private Consumer consumer;
     private IProductDao productDao;
     private Gson gson;
+    
+    public Product getProduct(Long id) {
+        return productDao.getProduct(id);
+    }
 
     public Collection<Product> getProducts() {
         return productDao.getProducts();
     }
+    
+    public ObservableList<MessageResponseProduct> getReceivedMessages() {
+        return consumer.getReceivedMessages();
+    }
 
     public TweakersController(String activeMqIp) throws JMSException {
         System.out.println("Connecting to ActiveMQ server. . .");
-        producer = new Producer("tcp://" + activeMqIp + ":61616", "admin", "admin");
-        producer.setup("ResponseClientQueue", "RequestBrokerQueue");
+        consumer = new Consumer("tcp://" + activeMqIp + ":61616", "admin", "admin");
+        consumer.start("ResponseClientQueue", "RequestBrokerQueue");
         System.out.println("Connected to ActiveMQ server.");
 
         gson = new Gson();
@@ -41,12 +49,12 @@ public class TweakersController {
     }
 
     public void stop() throws JMSException {
-        producer.close();
+        consumer.stop();
     }
 
     public void sendMessage(int desiredPrice, Product selectedProduct) throws JMSException {
-        MessageProduct msg = new MessageProduct(desiredPrice, selectedProduct);
-        producer.sendMessage(gson.toJson(msg));
+        MessageRequestProduct msg = new MessageRequestProduct(selectedProduct, desiredPrice);
+        consumer.sendMessage(gson.toJson(msg));
     }
 
     private List<Product> initProducts() {

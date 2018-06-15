@@ -9,6 +9,7 @@ public abstract class Product implements Comparable<Product> {
     private String type;
     private Long id;
     private String name;
+    private int price;
 
     public String getType() {
         return type;
@@ -33,11 +34,20 @@ public abstract class Product implements Comparable<Product> {
     public void setName(String name) {
         this.name = name;
     }
+
+    public int getPrice() {
+        return price;
+    }
+
+    public void setPrice(int price) {
+        this.price = price;
+    }
     
-    public Product(Long id, String name) {
+    public Product(Long id, String name, int price) {
         this.type = this.getClass().getSimpleName();
         this.id = id;
         this.name = name;
+        this.price = price;
     }
     
     @Override

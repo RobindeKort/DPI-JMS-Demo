@@ -18,7 +18,7 @@ import org.apache.activemq.RedeliveryPolicy;
  *
  * @author Robin
  */
-public class Consumer implements MessageListener {
+public class StoreConsumer implements MessageListener {
 
     private final String ACTION_ID_HEADER = "actionId";
     private final String ACTION_HEADER = "action";
@@ -31,10 +31,9 @@ public class Consumer implements MessageListener {
     
     private Connection connection;
     private Session session;
-    private MessageProducer producer;
     private MessageConsumer consumer;
 
-    public Consumer(String activeMqBrokerUri, String username, String password) {
+    public StoreConsumer(String activeMqBrokerUri, String username, String password) {
         super();
         this.id = 1L;
         this.activeMqBrokerUri = activeMqBrokerUri;
@@ -42,7 +41,7 @@ public class Consumer implements MessageListener {
         this.password = password;
     }
 
-    public void start(String originQueue, String destinationTopic) throws JMSException {
+    public void start(String originQueue) throws JMSException {
         ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(username, password, activeMqBrokerUri);
         factory.setUseAsyncSend(true);
         RedeliveryPolicy policy = factory.getRedeliveryPolicy();
@@ -54,7 +53,6 @@ public class Consumer implements MessageListener {
         connection = factory.createConnection();
         connection.start();
         session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-        producer = session.createProducer(session.createTopic(destinationTopic));
         consumer = session.createConsumer(session.createQueue(originQueue));
         consumer.setMessageListener(this);
     }
@@ -64,16 +62,12 @@ public class Consumer implements MessageListener {
             consumer.close();
             consumer = null;
         }
-        
-        if (producer != null) {
-            producer.close();
-            producer = null;
-        }
 
         if (session != null) {
             session.close();
             session = null;
         }
+        
         if (connection != null) {
             connection.close();
             connection = null;
@@ -84,12 +78,13 @@ public class Consumer implements MessageListener {
     public void onMessage(Message message) {
         TextMessage textMessage = (TextMessage) message;
         try {
-            System.out.println(textMessage.getJMSMessageID());
+            System.out.println(textMessage.getJMSCorrelationID());
             System.out.println(textMessage.getText());
+            AggregationMapper.getInstance().addNewResponse(textMessage.getJMSCorrelationID(), textMessage);
             // TODO robkor: Is this the correct usage of DeliveryMode, Priority and TimeToLive?
-            producer.send(textMessage, DeliveryMode.NON_PERSISTENT, 1, 0);
+            // producer.send(textMessage, DeliveryMode.NON_PERSISTENT, 1, 0);
         } catch (JMSException ex) {
-            Logger.getLogger(Consumer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(StoreConsumer.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 }

@@ -69,7 +69,7 @@ public class FXMLController implements Initializable {
             textfieldName.setDisable(true);
             buttonSubmit.setDisable(true);
             listviewRequests.itemsProperty().bind(listProperty);
-            listProperty.set(FXCollections.observableArrayList(storeController.getReceivedMessages()));
+            listProperty.set(storeController.getReceivedMessages());
         } catch (JMSException ex) {
             Logger.getLogger(FXMLController.class.getName()).log(Level.SEVERE, null, ex);
             System.out.println("Error occurred while connecting to ActiveMQ server.");

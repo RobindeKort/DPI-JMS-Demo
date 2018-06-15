@@ -10,9 +10,9 @@ public class Monitor extends Product {
     private int resolutionX;
     private int resolutionY;
     
-    public Monitor(Long id, String name, int screenDiagonal, 
+    public Monitor(Long id, String name, int price, int screenDiagonal, 
             int resolutionX, int resolutionY) {
-        super(id, name);
+        super(id, name, price);
         this.screenDiagonal = screenDiagonal;
         this.resolutionX = resolutionX;
         this.resolutionY = resolutionY;

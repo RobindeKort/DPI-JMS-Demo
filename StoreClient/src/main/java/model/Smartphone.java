@@ -10,9 +10,9 @@ public class Smartphone extends Product {
     private int memory;
     private int storage;
     
-    public Smartphone(Long id, String name, String operatingSystem,
+    public Smartphone(Long id, String name, int price, String operatingSystem,
             int memory, int storage) {
-        super(id, name);
+        super(id, name, price);
         this.operatingSystem = operatingSystem;
         this.memory = memory;
         this.storage = storage;
